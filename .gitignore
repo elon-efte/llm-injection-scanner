@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# Secrets — NEVER commit these
+.env
+*.env
+config.local.py
+secrets.py
+
+# Generated reports (you may want to commit specific ones as demos)
+scan_report_*.html
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
