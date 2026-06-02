@@ -1,0 +1,41 @@
+# ============================================================
+# .dockerignore — Files excluded from the Podman/Docker build context
+# Keeping this lean makes builds faster and images smaller.
+# ============================================================
+
+# Python cache — never needed in images
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets — critical: never bake API keys into images
+.env
+*.env
+secrets.py
+
+# Generated reports (these are runtime output, not source code)
+*.html
+reports/
+
+# Git metadata
+.git/
+.gitignore
+
+# Documentation (not needed at runtime)
+*.md
+PODMAN.md
+LICENSE
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+.DS_Store

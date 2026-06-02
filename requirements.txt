@@ -1,0 +1,24 @@
+# ============================================================
+# LLM Injection Scanner — Python Dependencies
+# ============================================================
+#
+# Install all dependencies:
+#   pip install -r requirements.txt
+#
+# Or install only what you need for your chosen LLM provider:
+#   pip install click requests              # Always required
+#   pip install openai                      # For OpenAI / Generic provider
+#   pip install anthropic                   # For Anthropic / Claude
+#   (Ollama needs no extra package)
+# ============================================================
+
+# --- Core (always required) ---
+click>=8.1.0          # CLI framework
+requests>=2.31.0      # HTTP client (used by the Ollama adapter)
+
+# --- LLM Provider SDKs (install the ones you need) ---
+openai>=1.0.0         # OpenAI GPT models + Generic (OpenAI-compatible) providers
+anthropic>=0.20.0     # Anthropic Claude models
+
+# --- Development / Testing (optional) ---
+pytest>=7.0.0         # Run tests with: pytest
