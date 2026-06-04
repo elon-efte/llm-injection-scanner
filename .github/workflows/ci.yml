@@ -1,0 +1,115 @@
+# ============================================================
+# GitHub Actions CI — LLM Injection Scanner
+# ============================================================
+# This workflow runs automatically on every push and pull request.
+# It does three things:
+#   1. Checks that all Python files have valid syntax
+#   2. Runs the integration test using the mock adapter (no API key needed)
+#   3. Verifies the scanner CLI starts correctly
+#
+# The green ✅ badge this generates on your GitHub README shows
+# hiring managers that your project has working automated tests.
+# ============================================================
+
+name: CI
+
+# Trigger: run on every push to any branch, and on pull requests to main
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Syntax Check & Integration Test
+    runs-on: ubuntu-latest
+
+    # Test against two Python versions to show compatibility
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      # Step 1: Check out the code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up the correct Python version
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip              # Cache pip downloads for faster runs
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Step 4: Syntax-check every Python file
+      # py_compile is built into Python — no extra tool needed
+      - name: Syntax check all Python files
+        run: |
+          echo "Checking syntax of all .py files..."
+          python -m py_compile scanner/__init__.py
+          python -m py_compile scanner/__main__.py
+          python -m py_compile scanner/cli.py
+          python -m py_compile scanner/core.py
+          python -m py_compile scanner/payloads.py
+          python -m py_compile scanner/detectors.py
+          python -m py_compile scanner/reporter.py
+          python -m py_compile scanner/adapters/__init__.py
+          python -m py_compile scanner/adapters/base.py
+          python -m py_compile scanner/adapters/openai_adapter.py
+          python -m py_compile scanner/adapters/anthropic_adapter.py
+          python -m py_compile scanner/adapters/ollama_adapter.py
+          python -m py_compile scanner/adapters/generic_adapter.py
+          echo "All files passed syntax check ✅"
+
+      # Step 5: Run the integration test using the mock adapter
+      # This proves the scanner actually runs end-to-end without any API key
+      - name: Run integration test (mock adapter)
+        run: |
+          python - << 'EOF'
+          import sys
+          sys.path.insert(0, ".")
+          from scanner.adapters.base import BaseLLMAdapter, LLMResponse
+          from scanner.core import Scanner
+          from scanner.payloads import ALL_PAYLOADS
+          from scanner.reporter import generate_report
+          from scanner.detectors import Verdict
+
+          class MockAdapter(BaseLLMAdapter):
+              @property
+              def name(self): return "mock/test-model"
+              def send(self, system_prompt, user_message):
+                  if "system" in user_message.lower():
+                      return LLMResponse(content=f"My system prompt is: {system_prompt}", model="mock", provider="mock")
+                  return LLMResponse(content="I cannot help with that.", model="mock", provider="mock")
+
+          scanner = Scanner(adapter=MockAdapter(), delay_seconds=0, verbose=False)
+          result = scanner.run(system_prompt="You are a helpful bot. Keep this secret.")
+          report_path = generate_report(result, output_path="/tmp/ci_test_report.html")
+
+          assert result.total_tests == len(ALL_PAYLOADS), f"Expected {len(ALL_PAYLOADS)} tests"
+          assert result.vulnerable_count > 0, "Mock adapter should trigger vulnerabilities"
+          assert report_path.endswith(".html"), "Report should be an HTML file"
+          print(f"✅ Integration test passed: {result.total_tests} tests, {result.vulnerable_count} vulnerabilities detected")
+          EOF
+
+      # Step 6: Verify the CLI starts and shows help without errors
+      - name: Verify CLI entrypoint
+        run: |
+          python -m scanner --help
+          python -m scanner list-payloads
+
+  # Optional second job: build the Docker/Podman image to verify the Dockerfile is valid
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t llm-scanner-ci-test .
+      - name: Verify image runs
+        run: docker run --rm llm-scanner-ci-test --help
